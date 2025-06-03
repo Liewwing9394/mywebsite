@@ -21,6 +21,12 @@
       color: #2c3e50;
       margin: 0;
     }
+    .user-display {
+      font-size: 1rem;
+      color: #2c3e50;
+      cursor: pointer;
+      user-select: none;
+    }
     .controls {
       margin-bottom: 15px;
     }
@@ -57,21 +63,21 @@
     }
     th, td {
       border: 1px solid #ddd;
-      padding: 0; /* 讓按鈕可以自行調整 */
+      padding: 0;
       text-align: center;
       position: relative;
     }
     th {
       background-color: #2c3e50;
       color: white;
-      padding: 8px; /* 保持表頭字體可讀 */
+      padding: 8px;
     }
-    /* “操作” 欄位寬度調整為 120px，並讓按鈕並排 */
+    /* “操作” 欄位寬度 120px */
     table th:nth-child(2),
     table td:nth-child(2) {
       width: 120px;
     }
-    /* 操作按鈕不使用絕對定位，讓三個按鈕並排 */
+    /* 並排顯示上移/下移/刪除按鈕 */
     table td:nth-child(2) .cell-btn {
       position: static;
       width: auto;
@@ -81,19 +87,19 @@
       border-radius: 4px;
       display: inline-block;
     }
-    /* “繳費”第 4 欄、“總場數”第 5 欄，各保持 50px */
+    /* “繳費”第 4 欄、“總場數”第 5 欄 各 50px */
     table th:nth-child(4),
     table td:nth-child(4),
     table th:nth-child(5),
     table td:nth-child(5) {
       width: 50px;
     }
-    /* “場次”從第 6 欄開始，將寬度減少 40%：假設原先 100px，現在 60px */
+    /* “場次”從第 6 欄開始，寬度 60px */
     table th:nth-child(n+6),
     table td:nth-child(n+6) {
       width: 60px;
     }
-    /* 預設 cell-btn 使用絕對定位以填滿儲存格 */
+    /* cell-btn 預設絕對定位 */
     .cell-btn {
       position: absolute;
       top: 0;
@@ -128,7 +134,7 @@
       user-select: none;
       transition: color 0.2s, box-shadow 0.2s;
       display: inline-block;
-      padding: 4px 8px; /* 增加點擊區域 */
+      padding: 4px 8px;
     }
     .name-cell:hover {
       text-decoration: underline;
@@ -142,7 +148,7 @@
       background-color: #ffffff;
     }
     tbody tr:nth-child(odd) {
-      background-color: #f2f2f2;
+      background-color: #f2f9f2;
     }
     /* 滑鼠移上去時更突出 */
     tbody tr:hover {
@@ -151,9 +157,9 @@
     .bottom-controls {
       margin-top: 20px;
     }
-    /* “場次”內格子字體小 10% */
+    /* “場次”內格子數字增大20% */
     td.session-cell button {
-      font-size: 90%;
+      font-size: 110%;
     }
     /* 奇數場次：黑底白字 */
     .session-odd {
@@ -214,6 +220,9 @@
 <body>
   <div class="header">
     <h1>小羽宙 羽球隊 Web APP</h1>
+    <div id="userDisplay" class="user-display" onclick="toggleUser()">
+      使用者：
+    </div>
   </div>
 
   <div class="controls">
@@ -250,10 +259,22 @@
       }
     });
 
+    // 使用者名稱循環列表
+    const userNames = ["小羽宙 濡", "小羽宙 白", "小羽宙 強"];
+    let userIndex = -1;
+
+    function toggleUser() {
+      userIndex = (userIndex + 1) % (userNames.length + 1);
+      const display = document.getElementById("userDisplay");
+      display.textContent = userIndex === userNames.length
+        ? "使用者："
+        : `使用者：${userNames[userIndex]}`;
+    }
+
     let data = [];
     const sessionsPerPage = 4;
     const totalPages = 20;
-    const totalSessions = totalPages * sessionsPerPage; // 80 場
+    const totalSessions = totalPages * sessionsPerPage; // 80
     let nextId = 1;
     let sessionPage = 0;
 
@@ -284,7 +305,7 @@
       data.forEach((row, index) => {
         const total = row.sessions.filter(s => s).length;
         let rowHtml = `<tr><td>${index + 1}</td>`;
-        // 操作按鈕（並排顯示 ↑、↓、刪除）
+        // 操作按鈕（並排 ↑、↓、刪除）
         rowHtml += `<td style="height:40px; line-height:40px;">
                       <button class="cell-btn" onclick="moveUp(${index})">↑</button>
                       <button class="cell-btn" onclick="moveDown(${index})">↓</button>
@@ -317,7 +338,6 @@
                         </button>
                       </td>`;
         }
-
         rowHtml += "</tr>";
         tbody.innerHTML += rowHtml;
       });
@@ -360,13 +380,10 @@
         alert("請輸入姓名！");
         return;
       }
-
-      // 支援以 "1.Sonja / Alice" 或以空白/斜線分隔多個名字
       const rawNames = inputStr.match(/\d+\.\s*[^\d]+/g) || inputStr.split(/[\s\/]+/);
       const names = rawNames.map(n => n.replace(/^\d+\./, '').trim()).filter(n => n !== "");
       const existingNames = data.map(d => d.name);
       let added = 0;
-
       names.forEach(n => {
         if (existingNames.includes(n)) {
           alert(`已有名為 "${n}" 的人，請勿重複。`);
@@ -380,7 +397,6 @@
           added++;
         }
       });
-
       if (added > 0) renderTable();
       input.value = "";
     }
