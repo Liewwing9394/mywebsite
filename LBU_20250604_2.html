@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>小羽宙 羽球隊 Web APP</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #eef4f6;
+      margin: 20px;
+    }
+    /* 標題區：左右對齊 */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    h1 {
+      color: #2c3e50;
+      margin: 0;
+    }
+    .datetime {
+      font-size: 0.9rem;
+      color: #888;
+      margin: 0 10px;
+      white-space: nowrap;
+    }
+    .user-display {
+      font-size: 1rem;
+      color: #2c3e50;
+      cursor: pointer;
+      user-select: none;
+    }
+    .controls {
+      margin-bottom: 15px;
+    }
+    .controls input, .controls button {
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin-right: 6px;
+    }
+    .controls input {
+      border: 1px solid #ccc;
+      width: 240px;
+    }
+    .controls button {
+      border: none;
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .controls button:hover {
+      background-color: #2980b9;
+    }
+    .table-container {
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: white;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0;
+      text-align: center;
+      position: relative;
+    }
+    th {
+      background-color: #2c3e50;
+      color: white;
+      padding: 8px;
+      cursor: pointer;
+    }
+    /* 被鎖定的標題欄：深色反差 */
+    .locked-header {
+      background-color: #7f8c8d !important;
+      color: #ecf0f1 !important;
+    }
+    /* “操作” 欄位寬度 120px */
+    table th:nth-child(2),
+    table td:nth-child(2) {
+      width: 120px;
+    }
+    /* 並排顯示上移/下移/刪除按鈕 */
+    table td:nth-child(2) .cell-btn {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 2px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    /* “繳費”第 4 欄、“總場數”第 5 欄 各 50px */
+    table th:nth-child(4),
+    table td:nth-child(4),
+    table th:nth-child(5),
+    table td:nth-child(5) {
+      width: 50px;
+    }
+    /* “場次”從第 6 欄開始，寬度 60px */
+    table th:nth-child(n+6),
+    table td:nth-child(n+6) {
+      width: 60px;
+    }
+    /* cell-btn 預設絕對定位 */
+    .cell-btn {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #f7f9fa;
+      border: 1px solid #ccc;
+      border-radius: 0;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-weight: bold;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .cell-btn:hover {
+      background-color: #ecf0f1;
+    }
+    /* 被鎖定的場次按鈕：反差顏色，並禁用互動 */
+    .locked-session .cell-btn {
+      background-color: #bdc3c7 !important;
+      color: #7f8c8d !important;
+      cursor: not-allowed !important;
+    }
+    .payment-cash {
+      background-color: #ffe5b4 !important;
+    }
+    .payment-network {
+      background-color: #c1f0c1 !important;
+    }
+    .name-cell {
+      cursor: pointer;
+      color: #34495e;
+      font-weight: bold;
+      user-select: none;
+      transition: color 0.2s, box-shadow 0.2s;
+      display: inline-block;
+      padding: 4px 8px;
+    }
+    .name-cell:hover {
+      text-decoration: underline;
+      box-shadow: inset 0 -2px 0 #2980b9;
+    }
+    .name-cell:active {
+      color: red;
+    }
+    /* 斑馬線：偶數列白色、奇數列淡灰 */
+    tbody tr:nth-child(even) {
+      background-color: #ffffff;
+    }
+    tbody tr:nth-child(odd) {
+      background-color: #f2f9f2;
+    }
+    /* 滑鼠移上去時更突出 */
+    tbody tr:hover {
+      background-color: #e0e0e0;
+    }
+    .bottom-controls {
+      margin-top: 20px;
+    }
+    /* “場次”內格子數字增大20% */
+    td.session-cell button {
+      font-size: 110%;
+    }
+    /* 奇數場次：黑底白字 */
+    .session-odd {
+      background-color: #000000 !important;
+      color: #ffffff !important;
+      border-color: #000000 !important;
+    }
+    /* 偶數場次：橘色底黑字 */
+    .session-even {
+      background-color: #f39c12 !important;
+      color: #000000 !important;
+      border-color: #f39c12 !important;
+    }
+    /* 分頁區塊：靠右對齊 */
+    .pagination {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .pagination button {
+      padding: 6px 10px;
+      margin: 0 4px;
+      border-radius: 5px;
+      border: none;
+      background-color: #95a5a6;
+      color: white;
+      cursor: pointer;
+    }
+    .pagination button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    .jump-control {
+      display: inline-block;
+      margin-left: 20px;
+    }
+    .jump-control input {
+      width: 80px;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+      margin-right: 6px;
+    }
+    .jump-control button {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: none;
+      background-color: #2ecc71;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .jump-control button:hover {
+      background-color: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>小羽宙 羽球隊 Web APP</h1>
+    <div id="datetime" class="datetime"></div>
+    <div id="userDisplay" class="user-display" onclick="toggleUser()">
+      使用者：
+    </div>
+  </div>
+
+  <div class="controls">
+    <input id="newNameInput" placeholder="輸入姓名，如 1.Sonja / Alice" type="text"/>
+    <button onclick="addRow()">新增名單</button>
+    <!-- 只在 Safari 或 Android 顯示“更新頁面”按鈕 -->
+    <button id="refreshBtn" style="display:none;" onclick="confirmRefresh()">更新頁面</button>
+  </div>
+
+  <!-- 表格上方的分頁區塊 -->
+  <div class="pagination top-pagination">
+    <button onclick="prevPage()" id="prevBtnTop">上一頁</button>
+    <button onclick="nextPage()" id="nextBtnTop">下一頁</button>
+    <div class="jump-control">
+      <input id="jumpInputTop" type="number" min="1" placeholder="場次號碼"/>
+      <button onclick="jumpToSessionTop()">確認</button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead id="tableHeader"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 底部分頁區塊 -->
+  <div class="pagination bottom-pagination">
+    <button onclick="prevPage()" id="prevBtn">上一頁</button>
+    <button onclick="nextPage()" id="nextBtn">下一頁</button>
+    <div class="jump-control">
+      <input id="jumpInput" type="number" min="1" placeholder="場次號碼"/>
+      <button onclick="jumpToSession()">確認</button>
+    </div>
+  </div>
+
+  <div class="bottom-controls">
+    <button onclick="resetTable()" style="background-color: #e74c3c;">一鍵刪除所有資料</button>
+  </div>
+
+  <script>
+    // 偵測是否為 Safari 或 Android 瀏覽器
+    const ua = navigator.userAgent;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    if (isSafari || isAndroid) {
+      document.getElementById("refreshBtn").style.display = "inline-block";
+    }
+
+    // 為 Safari/Android 用戶提供自訂刷新確認
+    function confirmRefresh() {
+      if (confirm("確定要更新頁面？這可能會導致資料遺失。")) {
+        location.reload();
+      }
+    }
+
+    // 其餘瀏覽器則使用 beforeunload 防止誤刷新
+    window.addEventListener("beforeunload", function (e) {
+      if (!isSafari && !isAndroid && data.length > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+
+    // 顯示當前日期時間（每秒更新一次）
+    function updateDateTime() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById("datetime").textContent =
+        `${yyyy}/${mm}/${dd} ${hh}:${mi}:${ss}`;
+    }
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+
+    // 使用者名稱循環列表
+    const userNames = ["小羽宙 濡", "小羽宙 白", "小羽宙 強"];
+    let userIndex = -1;
+
+    function toggleUser() {
+      userIndex = (userIndex + 1) % (userNames.length + 1);
+      const display = document.getElementById("userDisplay");
+      display.textContent = userIndex === userNames.length
+        ? "使用者："
+        : `使用者：${userNames[userIndex]}`;
+    }
+
+    let data = [];
+    const sessionsPerPage = 4;
+    const totalPages = 20;
+    const totalSessions = totalPages * sessionsPerPage; // 80
+    let nextId = 1;
+    let sessionPage = 0;
+
+    // 用來記錄被鎖定的欄位索引 (0-based)
+    let lockedSessions = new Set();
+
+    function renderTable() {
+      const header = document.getElementById("tableHeader");
+      const tbody = document.getElementById("tableBody");
+      header.innerHTML = "";
+      tbody.innerHTML = "";
+
+      // 計算當前頁顯示的場次範圍
+      const start = (sessionPage + 1) * sessionsPerPage; // page0 → 4, page1 → 8, …
+      const end = sessionPage * sessionsPerPage + 1;     // page0 → 1, page1 → 5, …
+
+      // 建立表頭：編號、操作、姓名、繳費、總場數、場次
+      let headHtml = "<tr>"
+                   + "<th>編號</th>"
+                   + "<th>操作</th>"
+                   + "<th>姓名</th>"
+                   + "<th>繳費</th>"
+                   + "<th>總場數</th>";
+      for (let i = start; i >= end; i--) {
+        const idx = i - 1; // 對應 data.sessions 的索引
+        const lockedClass = lockedSessions.has(idx) ? "locked-header" : "";
+        headHtml += `<th class="session-header ${lockedClass}" onclick="toggleLockSessionColumn(${idx})">場次${i}</th>`;
+      }
+      headHtml += "</tr>";
+      header.innerHTML = headHtml;
+
+      // 建立表身
+      data.forEach((row, index) => {
+        const total = row.sessions.filter(s => s).length;
+        let rowHtml = `<tr><td>${index + 1}</td>`;
+        // 操作按鈕（並排 ↑、↓、刪除）
+        rowHtml += `<td style="height:40px; line-height:40px;">
+                      <button class="cell-btn" onclick="moveUp(${index})">↑</button>
+                      <button class="cell-btn" onclick="moveDown(${index})">↓</button>
+                      <button class="cell-btn" onclick="deleteRow(${row.id})">刪除</button>
+                    </td>`;
+        // 姓名
+        rowHtml += `<td><span class="name-cell" data-id="${row.id}">${row.name}</span></td>`;
+        // 繳費
+        let paymentClass = row.payment === "現金" ? "payment-cash" :
+                           row.payment === "網絡" ? "payment-network" : "";
+        rowHtml += `<td>
+                      <button class="cell-btn ${paymentClass}" onclick="togglePayment(${row.id})">
+                        ${row.payment || ""}
+                      </button>
+                    </td>`;
+        // 總場數
+        rowHtml += `<td>${total}</td>`;
+
+        // 場次按鈕，從 start 到 end
+        for (let i = start; i >= end; i--) {
+          const idx = i - 1;
+          const display = row.sessions[idx] ? i : "";
+          const isLocked = lockedSessions.has(idx);
+          let sessionClass = "";
+          if (display !== "") {
+            sessionClass = (i % 2 === 1) ? "session-odd" : "session-even";
+          }
+          // 如果該欄位被鎖定，將整個 <td> 加上 .locked-session
+          const tdClass = isLocked ? "session-cell locked-session" : "session-cell";
+          // 如果鎖定，就把 button 設為 disabled
+          const disabledAttr = isLocked ? "disabled" : "";
+          rowHtml += `<td class="${tdClass}">
+                        <button class="cell-btn ${sessionClass}" ${disabledAttr} onclick="toggleSession(${row.id}, ${idx})">
+                          ${display}
+                        </button>
+                      </td>`;
+        }
+        rowHtml += "</tr>";
+        tbody.innerHTML += rowHtml;
+      });
+
+      // 更新分頁按鈕狀態
+      document.getElementById("prevBtn").disabled = sessionPage <= 0;
+      document.getElementById("nextBtn").disabled = sessionPage >= totalPages - 1;
+      document.getElementById("prevBtnTop").disabled = sessionPage <= 0;
+      document.getElementById("nextBtnTop").disabled = sessionPage >= totalPages - 1;
+    }
+
+    function prevPage() {
+      if (sessionPage > 0) {
+        sessionPage--;
+        renderTable();
+      }
+    }
+
+    function nextPage() {
+      if (sessionPage < totalPages - 1) {
+        sessionPage++;
+        renderTable();
+      }
+    }
+
+    function jumpToSession() {
+      const input = document.getElementById("jumpInput");
+      const target = parseInt(input.value, 10);
+      if (isNaN(target) || target < 1 || target > totalSessions) {
+        alert(`請輸入 1 到 ${totalSessions} 之間的場次號碼`);
+        return;
+      }
+      sessionPage = Math.floor((target - 1) / sessionsPerPage);
+      renderTable();
+      input.value = "";
+      document.getElementById("jumpInputTop").value = "";
+    }
+    function jumpToSessionTop() {
+      const input = document.getElementById("jumpInputTop");
+      const target = parseInt(input.value, 10);
+      if (isNaN(target) || target < 1 || target > totalSessions) {
+        alert(`請輸入 1 到 ${totalSessions} 之間的場次號碼`);
+        return;
+      }
+      sessionPage = Math.floor((target - 1) / sessionsPerPage);
+      renderTable();
+      input.value = "";
+      document.getElementById("jumpInput").value = "";
+    }
+
+    function addRow() {
+      const input = document.getElementById("newNameInput");
+      const inputStr = input.value.trim();
+      if (!inputStr) {
+        alert("請輸入姓名！");
+        return;
+      }
+      const rawNames = inputStr.match(/\d+\.\s*[^\d]+/g) || inputStr.split(/[\s\/]+/);
+      const names = rawNames.map(n => n.replace(/^\d+\./, '').trim()).filter(n => n !== "");
+      const existingNames = data.map(d => d.name);
+      let added = 0;
+      names.forEach(n => {
+        if (existingNames.includes(n)) {
+          alert(`已有名為 "${n}" 的人，請勿重複。`);
+        } else {
+          data.push({
+            id: nextId++,
+            name: n,
+            payment: "",
+            sessions: Array(totalSessions).fill(false)
+          });
+          added++;
+        }
+      });
+      if (added > 0) renderTable();
+      input.value = "";
+    }
+
+    function deleteRow(id) {
+      const row = data.find(r => r.id === id);
+      if (!row) return;
+      if (confirm(`確定要刪除 "${row.name}" 嗎？`)) {
+        data = data.filter(d => d.id !== id);
+        renderTable();
+      }
+    }
+
+    function moveUp(index) {
+      if (index <= 0) return;
+      [data[index - 1], data[index]] = [data[index], data[index - 1]];
+      renderTable();
+    }
+
+    function moveDown(index) {
+      if (index >= data.length - 1) return;
+      [data[index], data[index + 1]] = [data[index + 1], data[index]];
+      renderTable();
+    }
+
+    function togglePayment(id) {
+      const row = data.find(r => r.id === id);
+      if (!row) return;
+      row.payment = row.payment === "" 
+        ? "現金" 
+        : row.payment === "現金" 
+          ? "網絡" 
+          : "";
+      renderTable();
+    }
+
+    function toggleSession(id, idx) {
+      // 如果該 session 欄位被鎖定，不允許切換
+      if (lockedSessions.has(idx)) return;
+      const row = data.find(r => r.id === id);
+      if (!row) return;
+      const maxPerSession = 4;
+      if (row.sessions[idx]) {
+        row.sessions[idx] = false;
+      } else {
+        let count = 0;
+        data.forEach(r => { if (r.sessions[idx]) count++; });
+        if (count >= maxPerSession) {
+          alert("該場次欄位最多只能有 4 人！");
+          return;
+        }
+        row.sessions[idx] = true;
+      }
+      renderTable();
+    }
+
+    function resetTable() {
+      if (confirm("確定要一鍵刪除所有資料？")) {
+        data = [];
+        nextId = 1;
+        sessionPage = 0;
+        lockedSessions.clear();
+        renderTable();
+      }
+    }
+
+    // 新增：切換鎖定／解鎖欄位
+    function toggleLockSessionColumn(idx) {
+      if (lockedSessions.has(idx)) {
+        lockedSessions.delete(idx);
+      } else {
+        lockedSessions.add(idx);
+      }
+      renderTable();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderTable();
+      document.getElementById("newNameInput").addEventListener("keydown", e => {
+        if (e.key === "Enter") addRow();
+      });
+    });
+  </script>
+</body>
+</html>
